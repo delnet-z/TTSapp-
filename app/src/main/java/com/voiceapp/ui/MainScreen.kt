@@ -87,48 +87,6 @@ fun MainScreen() {
         }
     }
 
-    suspend fun startAutoPlay() {
-        statusText = "正在获取位置..."
-        isPlaying = true
-        voiceText = ""
-
-        // 1. 获取位置
-        val location = locationHelper.getCurrentLocation()
-
-        // 2. 获取天气
-        val weather: WeatherData? = location.getOrNull()?.let { loc ->
-            statusText = "正在获取天气..."
-            weatherService.getWeather(loc.latitude, loc.longitude).getOrNull()
-        }
-
-        // 3. 生成播报内容
-        statusText = "AI 正在生成语音..."
-        val text = generateVoiceContent(weather, repo, apiService)
-        voiceText = text
-
-        // 4. TTS 播报
-        statusText = "正在播放..."
-        speakAndWait(text)
-
-        isPlaying = false
-        statusText = "播放完成"
-    }
-
-    suspend fun playWithoutLocation() {
-        statusText = "AI 正在生成语音..."
-        isPlaying = true
-        voiceText = ""
-
-        val text = generateVoiceContent(null, repo, apiService)
-        voiceText = text
-
-        statusText = "正在播放..."
-        speakAndWait(text)
-
-        isPlaying = false
-        statusText = "播放完成"
-    }
-
     suspend fun speakAndWait(text: String) {
         kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
             val id = "tts_${System.currentTimeMillis()}"
@@ -155,6 +113,43 @@ fun MainScreen() {
             }
             if (result == TextToSpeech.ERROR) cont.resumeWith(Result.success(Unit))
         }
+    }
+
+    suspend fun startAutoPlay() {
+        statusText = "正在获取位置..."
+        isPlaying = true
+        voiceText = ""
+
+        val location = locationHelper.getCurrentLocation()
+        val weather: WeatherData? = location.getOrNull()?.let { loc ->
+            statusText = "正在获取天气..."
+            weatherService.getWeather(loc.latitude, loc.longitude).getOrNull()
+        }
+
+        statusText = "AI 正在生成语音..."
+        val text = generateVoiceContent(weather, repo, apiService)
+        voiceText = text
+
+        statusText = "正在播放..."
+        speakAndWait(text)
+
+        isPlaying = false
+        statusText = "播放完成"
+    }
+
+    suspend fun playWithoutLocation() {
+        statusText = "AI 正在生成语音..."
+        isPlaying = true
+        voiceText = ""
+
+        val text = generateVoiceContent(null, repo, apiService)
+        voiceText = text
+
+        statusText = "正在播放..."
+        speakAndWait(text)
+
+        isPlaying = false
+        statusText = "播放完成"
     }
 
     // 设置页
