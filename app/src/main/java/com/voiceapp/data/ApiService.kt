@@ -2,6 +2,7 @@ package com.voiceapp.data
 
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.MediaType.Companion.toMediaType
 import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 import kotlinx.coroutines.Dispatchers
@@ -85,7 +86,7 @@ class ApiService {
                 .addHeader("Authorization", "Bearer $apiKey")
                 .addHeader("Content-Type", "application/json")
                 .post(okhttp3.RequestBody.create(
-                    okhttp3.MediaType.parse("application/json"),
+                    "application/json".toMediaType(),
                     gson.toJson(requestBody)
                 ))
                 .build()
