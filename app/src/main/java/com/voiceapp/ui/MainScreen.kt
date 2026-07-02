@@ -92,12 +92,11 @@ fun MainScreen() {
         val prompt = repo.getPromptTemplate()
             .replace("{greeting}", greeting)
             .replace("{weather}", weatherDesc)
-            .replace("{keywords}", repo.getKeywords())
 
         return try {
             apiService.generateText(prompt)
         } catch (e: Exception) {
-            "欣哥，${greeting}！今日${weatherDesc}。${repo.getKeywords()}，祝您出行平安，一路顺风！"
+            "欣哥，${greeting}！今日${weatherDesc}。祝您出行平安，一路顺风！"
         }
     }
 

@@ -18,8 +18,8 @@ class VoiceContentRepo {
     fun getPromptTemplate(): String {
         return prefs.getString(
             "prompt_template",
-            "{greeting}！今日天气：{weather}。请根据这些关键词生成播报：{keywords}"
-        ) ?: "{greeting}！今日天气：{weather}。请根据这些关键词生成播报：{keywords}"
+            "{greeting}！今日天气：{weather}"
+        ) ?: "{greeting}！今日天气：{weather}"
     }
 
     fun getBackendUrl(): String {
