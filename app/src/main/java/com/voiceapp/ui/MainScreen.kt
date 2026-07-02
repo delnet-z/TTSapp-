@@ -81,7 +81,12 @@ fun MainScreen() {
     suspend fun buildFullContent(weather: WeatherData?): String {
         val greeting = getTimeGreeting()
         val weatherDesc = weather?.let {
-            "气温${it.temperature.toInt()}°C，湿度${it.humidity}%，${it.description}，风速${it.windSpeed.toInt()}km/h"
+            buildString {
+                append("${it.description}，当前${it.temperature.toInt()}°C")
+                append("，最高${it.temperatureMax.toInt()}°C，最低${it.temperatureMin.toInt()}°C")
+                if (it.precipitationProb > 0) append("，降水概率${it.precipitationProb}%")
+                append("，湿度${it.humidity}%，风速${it.windSpeed.toInt()}km/h")
+            }
         } ?: "天气信息暂不可用"
 
         val prompt = repo.getPromptTemplate()
@@ -92,7 +97,7 @@ fun MainScreen() {
         return try {
             apiService.generateText(prompt)
         } catch (e: Exception) {
-            "${greeting}！今日${weatherDesc}。${repo.getKeywords()}，祝您出行平安，一路顺风！"
+            "欣哥，${greeting}！今日${weatherDesc}。${repo.getKeywords()}，祝您出行平安，一路顺风！"
         }
     }
 
