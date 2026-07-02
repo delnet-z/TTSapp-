@@ -7,17 +7,17 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import com.voiceapp.ui.MainScreen
+import com.voiceapp.ui.SettingsScreen
 import com.voiceapp.ui.VoiceLauncherTheme
 
-class MainActivity : ComponentActivity() {
+class SettingsActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             VoiceLauncherTheme {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    MainScreen()
+                    SettingsScreen(onBack = { finish() })
                 }
             }
         }
