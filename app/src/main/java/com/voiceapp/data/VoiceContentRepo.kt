@@ -1,6 +1,6 @@
 package com.voiceapp.data
 
-import com.voiceapp.VoiceApp
+import com.voiceapp.App
 import com.voiceapp.data.ApiService.Companion.DEFAULT_CONFIG_URL
 
 /**
