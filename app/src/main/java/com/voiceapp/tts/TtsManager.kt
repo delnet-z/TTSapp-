@@ -105,7 +105,7 @@ class TtsManager(context: Context) {
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
         } else {
             @Suppress("DEPRECATION")
-            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, mapOf(
+            tts?.speak(text, TextToSpeech.QUEUE_FLUSH, hashMapOf(
                 TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID to utteranceId
             ))
         }
