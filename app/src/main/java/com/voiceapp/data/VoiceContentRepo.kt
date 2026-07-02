@@ -7,7 +7,7 @@ import com.voiceapp.data.ApiService.Companion.DEFAULT_CONFIG_URL
  * 语音内容仓库 - 管理API Key和配置URL的本地存储
  */
 object VoiceContentRepo {
-    private val prefs = VoiceApp.instance.getSharedPreferences("voice_prefs", 0)
+    private val prefs = App.instance.getSharedPreferences("voice_prefs", 0)
 
     private const val KEY_GLM_API_KEY = "glm_api_key"
     private const val KEY_CONFIG_URL = "config_url"
