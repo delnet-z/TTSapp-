@@ -52,41 +52,7 @@ fun MainScreen() {
     val locationHelper = remember { LocationHelper(context) }
     val weatherService = remember { WeatherService() }
 
-    // 定位权限请求
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            scope.launch { startAutoPlay() }
-        } else {
-            statusText = "定位权限被拒绝，使用默认天气"
-            scope.launch { playWithoutLocation() }
-        }
-    }
-
-    // 初始化 TTS
-    LaunchedEffect(Unit) {
-        tts = TextToSpeech(context) { status ->
-            ttsReady = status == TextToSpeech.SUCCESS
-            if (ttsReady) {
-                tts?.language = java.util.Locale.CHINESE
-            }
-        }
-    }
-
-    // 自动播放入口：TTS 就绪后启动
-    LaunchedEffect(ttsReady) {
-        if (ttsReady) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED
-            ) {
-                startAutoPlay()
-            } else {
-                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-            }
-        }
-    }
-
+    // 必须先定义局部函数（Kotlin 不支持前向引用）
     suspend fun speakAndWait(text: String) {
         kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
             val id = "tts_${System.currentTimeMillis()}"
@@ -150,6 +116,41 @@ fun MainScreen() {
 
         isPlaying = false
         statusText = "播放完成"
+    }
+
+    // 定位权限请求
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            scope.launch { startAutoPlay() }
+        } else {
+            statusText = "定位权限被拒绝，使用默认天气"
+            scope.launch { playWithoutLocation() }
+        }
+    }
+
+    // 初始化 TTS
+    LaunchedEffect(Unit) {
+        tts = TextToSpeech(context) { status ->
+            ttsReady = status == TextToSpeech.SUCCESS
+            if (ttsReady) {
+                tts?.language = java.util.Locale.CHINESE
+            }
+        }
+    }
+
+    // 自动播放入口：TTS 就绪后启动
+    LaunchedEffect(ttsReady) {
+        if (ttsReady) {
+            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+            ) {
+                startAutoPlay()
+            } else {
+                permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+            }
+        }
     }
 
     // 设置页
