@@ -84,7 +84,11 @@ fun MainScreen() {
             buildString {
                 append("${it.description}，当前${it.temperature.toInt()}°C")
                 append("，最高${it.temperatureMax.toInt()}°C，最低${it.temperatureMin.toInt()}°C")
-                if (it.precipitationProb > 0) append("，降水概率${it.precipitationProb}%")
+                if (it.precipitationProb > 50) {
+                    append("，降水概率${it.precipitationProb}%，路面湿滑小心驾驶")
+                } else if (it.precipitationProb > 0) {
+                    append("，降水概率${it.precipitationProb}%")
+                }
                 append("，湿度${it.humidity}%，风速${it.windSpeed.toInt()}km/h")
             }
         } ?: "天气信息暂不可用"
