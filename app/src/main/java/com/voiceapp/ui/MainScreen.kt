@@ -38,8 +38,7 @@ fun MainScreen() {
     var tts by remember { mutableStateOf<TextToSpeech?>(null) }
     var ttsReady by remember { mutableStateOf(false) }
 
-    // UI 状态
-    var phase by remember { mutableStateOf(0) } // 0=初始化 1=播问候中 2=后台生成中 3=播完整内容中 4=完成
+    var phase by remember { mutableStateOf(0) }
     var greetingText by remember { mutableStateOf("") }
     var fullContent by remember { mutableStateOf("") }
     var statusLine by remember { mutableStateOf("正在准备...") }
@@ -50,73 +49,21 @@ fun MainScreen() {
     val locationHelper = remember { LocationHelper(context) }
     val weatherService = remember { WeatherService() }
 
-    // ====== 播放函数 ======
+    // ====== 辅助函数（必须在调用方之前定义） ======
 
-    /** 异步播放，不等待完成（用于问候语） */
-    fun speak(text: String) {
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "greeting")
-    }
-
-    /** 同步播放，等待完成（用于完整内容） */
-    suspend fun speakAndWait(text: String) {
-        kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
-            val id = "tts_${System.currentTimeMillis()}"
-            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
-                override fun onStart(s: String?) {}
-                override fun onDone(s: String?) {
-                    cont.resumeWith(Result.success(Unit))
-                }
-                override fun onError(s: String?) {
-                    cont.resumeWith(Result.success(Unit))
-                }
-                @Deprecated("Deprecated")
-                override fun onError(s: String?, code: Int) {
-                    cont.resumeWith(Result.success(Unit))
-                }
-            })
-            if (tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) == TextToSpeech.ERROR)
-                cont.resumeWith(Result.success(Unit))
+    fun getTimeGreeting(): String {
+        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+        return when (hour) {
+            in 0..5 -> "凌晨好"
+            in 6..8 -> "早上好"
+            in 9..11 -> "上午好"
+            in 12..13 -> "中午好"
+            in 14..17 -> "下午好"
+            in 18..21 -> "晚上好"
+            else -> "夜深了"
         }
     }
 
-    // ====== 核心流程：秒开即播 + 后台拉取 ======
-
-    suspend fun startFlow() {
-        // 第一步：立即播放问候语，不等待任何网络请求
-        phase = 1
-        val greeting = buildGreeting()
-        greetingText = greeting
-        statusLine = "正在播报问候..."
-        speak(greeting)
-
-        // 第二步：后台异步获取数据 + GLM 生成
-        phase = 2
-        statusLine = "后台正在获取天气..."
-
-        val weather = withTimeoutOrNull(4000L) {
-            val loc = withTimeoutOrNull(3000L) {
-                locationHelper.getCurrentLocation().getOrNull()
-            }
-            loc?.let { l ->
-                withTimeoutOrNull(5000L) {
-                    weatherService.getWeather(l.latitude, l.longitude).getOrNull()
-                }
-            }
-        }
-
-        val text = buildFullContent(weather)
-        fullContent = text
-
-        // 第三步：播放完整内容
-        phase = 3
-        statusLine = "正在播报..."
-        speakAndWait(text)
-
-        phase = 4
-        statusLine = "播报完成"
-    }
-
-    /** 即时问候：不需要任何网络请求 */
     fun buildGreeting(): String {
         val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
         val timeWord = when (hour) {
@@ -131,7 +78,6 @@ fun MainScreen() {
         return "${timeWord}好！准备好出发了吗~"
     }
 
-    /** 完整内容：天气 + GLM 生成 */
     suspend fun buildFullContent(weather: WeatherData?): String {
         val greeting = getTimeGreeting()
         val weatherDesc = weather?.let {
@@ -150,17 +96,59 @@ fun MainScreen() {
         }
     }
 
-    fun getTimeGreeting(): String {
-        val hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
-        return when (hour) {
-            in 0..5 -> "凌晨好"
-            in 6..8 -> "早上好"
-            in 9..11 -> "上午好"
-            in 12..13 -> "中午好"
-            in 14..17 -> "下午好"
-            in 18..21 -> "晚上好"
-            else -> "夜深了"
+    /** 异步播放，不等待完成 */
+    fun speak(text: String) {
+        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "greeting")
+    }
+
+    /** 同步播放，等待完成 */
+    suspend fun speakAndWait(text: String) {
+        kotlinx.coroutines.suspendCancellableCoroutine<Unit> { cont ->
+            val id = "tts_${System.currentTimeMillis()}"
+            tts?.setOnUtteranceProgressListener(object : UtteranceProgressListener() {
+                override fun onStart(s: String?) {}
+                override fun onDone(s: String?) { cont.resumeWith(Result.success(Unit)) }
+                override fun onError(s: String?) { cont.resumeWith(Result.success(Unit)) }
+                @Deprecated("Deprecated")
+                override fun onError(s: String?, code: Int) { cont.resumeWith(Result.success(Unit)) }
+            })
+            if (tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, id) == TextToSpeech.ERROR)
+                cont.resumeWith(Result.success(Unit))
         }
+    }
+
+    // ====== 核心流程 ======
+
+    suspend fun startFlow() {
+        phase = 1
+        val greeting = buildGreeting()
+        greetingText = greeting
+        statusLine = "正在播报问候..."
+        speak(greeting)
+
+        phase = 2
+        statusLine = "后台正在获取天气..."
+
+        val weather = withTimeoutOrNull(4000L) {
+            val loc = withTimeoutOrNull(3000L) {
+                locationHelper.getCurrentLocation().getOrNull()
+            }
+            loc?.let { l ->
+                withTimeoutOrNull(5000L) {
+                    weatherService.getWeather(l.latitude, l.longitude).getOrNull()
+                }
+            }
+        }
+
+        val text = buildFullContent(weather)
+        fullContent = text
+
+        phase = 3
+        statusLine = "正在播报..."
+        speakAndWait(text)
+
+        phase = 4
+        statusLine = "播报完成"
     }
 
     // ====== 权限 & 启动 ======
@@ -193,11 +181,8 @@ fun MainScreen() {
         if (!ttsReady) return@LaunchedEffect
         if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
             == PackageManager.PERMISSION_GRANTED
-        ) {
-            startFlow()
-        } else {
-            permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-        }
+        ) startFlow()
+        else permissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
     }
 
     // ====== 设置页 ======
@@ -213,11 +198,7 @@ fun MainScreen() {
         topBar = {
             TopAppBar(
                 title = { Text("语音播报") },
-                actions = {
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Default.Settings, "设置")
-                    }
-                },
+                actions = { IconButton(onClick = { showSettings = true }) { Icon(Icons.Default.Settings, "设置") } },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -227,39 +208,32 @@ fun MainScreen() {
         }
     ) { padding ->
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
+            Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(Modifier.height(32.dp))
 
-            // 状态图标
-            val (icon, desc) = when (phase) {
+            val (icon, _) = when (phase) {
                 0 -> Icons.Default.HourglassTop to "准备中"
                 1 -> Icons.Default.PlayCircle to "播报中"
                 2 -> Icons.Default.CloudDownload to "获取数据"
                 3 -> Icons.Default.VolumeUp to "播放中"
                 else -> Icons.Default.CheckCircle to "完成"
             }
-            Icon(icon, desc, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
+            Icon(icon, null, Modifier.size(64.dp), tint = MaterialTheme.colorScheme.primary)
 
             Spacer(Modifier.height(16.dp))
-
             Text(statusLine, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
             if (phase in 1..3) {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(Modifier.fillMaxWidth(0.5f))
             }
 
-            // 问候语卡片
             AnimatedVisibility(visible = greetingText.isNotBlank(), enter = fadeIn()) {
                 Column { Spacer(Modifier.height(16.dp))
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-                    ) {
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)) {
                         Column(Modifier.padding(16.dp)) {
                             Text("即时问候", style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f))
@@ -271,12 +245,10 @@ fun MainScreen() {
                 }
             }
 
-            // 完整内容卡片
             AnimatedVisibility(visible = fullContent.isNotBlank(), enter = fadeIn()) {
                 Column { Spacer(Modifier.height(16.dp))
                     Card(Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                    ) {
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                         Column(Modifier.padding(16.dp)) {
                             Text("AI 生成播报", style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.primary)
@@ -289,26 +261,17 @@ fun MainScreen() {
 
             Spacer(Modifier.height(24.dp))
 
-            // 重新播放按钮
             if (phase == 4) {
                 OutlinedButton(onClick = {
-                    scope.launch {
-                        phase = 3; statusLine = "正在播报..."
-                        speakAndWait(fullContent)
-                        phase = 4; statusLine = "播报完成"
-                    }
+                    scope.launch { phase = 3; statusLine = "正在播报..."; speakAndWait(fullContent); phase = 4; statusLine = "播报完成" }
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Refresh, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("重新播放")
+                    Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("重新播放")
                 }
                 Spacer(Modifier.height(8.dp))
                 OutlinedButton(onClick = {
                     scope.launch { startFlow() }
                 }, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.Default.Refresh, null)
-                    Spacer(Modifier.width(8.dp))
-                    Text("重新生成")
+                    Icon(Icons.Default.Refresh, null); Spacer(Modifier.width(8.dp)); Text("重新生成")
                 }
             }
         }
