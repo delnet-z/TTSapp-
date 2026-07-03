@@ -19,7 +19,6 @@ fun SettingsScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val repo = remember { VoiceContentRepo() }
 
-    var keywords by remember { mutableStateOf(repo.getKeywords()) }
     var promptTemplate by remember { mutableStateOf(repo.getPromptTemplate()) }
     var saved by remember { mutableStateOf(false) }
 
@@ -48,37 +47,13 @@ fun SettingsScreen(onBack: () -> Unit) {
                 .padding(16.dp)
         ) {
             Text(
-                "自定义关键词",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                "AI 会根据这些关键词生成个性化播报内容。多个关键词用逗号分隔。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(Modifier.height(8.dp))
-            OutlinedTextField(
-                value = keywords,
-                onValueChange = { keywords = it },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("关键词") },
-                placeholder = { Text("早安,今天是个好日子,加油") },
-                minLines = 2,
-                maxLines = 4
-            )
-
-            Spacer(Modifier.height(24.dp))
-
-            Text(
                 "Prompt 模板",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                "模板中的 {greeting}、{weather}、{keywords} 会在生成时自动替换。",
+                "模板中的 {greeting}、{weather} 会在生成时自动替换。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -96,7 +71,6 @@ fun SettingsScreen(onBack: () -> Unit) {
 
             Button(
                 onClick = {
-                    repo.saveKeywords(keywords)
                     repo.savePromptTemplate(promptTemplate)
                     saved = true
                 },

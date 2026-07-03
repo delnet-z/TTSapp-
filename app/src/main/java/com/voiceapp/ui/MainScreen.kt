@@ -98,19 +98,14 @@ fun MainScreen() {
             .replace("{weather}", weatherDesc)
 
         if (weather == null) {
-            return "欣哥，${greeting}！天气信息暂不可用。请注意安全驾驶。祝您出行平安，一路顺风！"
+            return "欣哥，${greeting}！天气信息暂不可用。请注意安全驾驶。祝您出行平安！"
         }
 
         return try {
             apiService.generateText(prompt)
         } catch (e: Exception) {
-            "欣哥，${greeting}！今日${weatherDesc}。祝您出行平安，一路顺风！"
+            "欣哥，${greeting}！今日${weatherDesc}。祝您出行平安！"
         }
-    }
-
-    /** 异步播放，不等待完成 */
-    fun speak(text: String) {
-        tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "greeting")
     }
 
     /** 同步播放，等待完成 */
@@ -132,33 +127,44 @@ fun MainScreen() {
     // ====== 核心流程 ======
 
     suspend fun startFlow() {
-        phase = 1
-        val greeting = buildGreeting()
-        greetingText = greeting
-        statusLine = "正在播报问候..."
-        speak(greeting)
+        try {
+            phase = 1
+            val greeting = buildGreeting()
+            greetingText = greeting
+            statusLine = "正在播报问候..."
+            speakAndWait(greeting)
 
-        phase = 2
-        statusLine = "后台正在获取天气..."
+            phase = 2
+            statusLine = "正在获取天气..."
 
-        val loc = withTimeoutOrNull(3000L) {
-            locationHelper.getCurrentLocation().getOrNull()
-        }
-        val weather = loc?.let { l ->
-            withTimeoutOrNull(8000L) {
-                weatherService.getWeather(l.latitude, l.longitude).getOrNull()
+            // 定位：GPS/缓存(3s) → IP兜底(2s)
+            val loc = withTimeoutOrNull(3000L) {
+                locationHelper.getCurrentLocation().getOrNull()
             }
+            val coords = loc?.let { it.latitude to it.longitude }
+                ?: withTimeoutOrNull(2000L) { locationHelper.getIpLocation().getOrNull() }
+
+            val weather = coords?.let { (lat, lon) ->
+                withTimeoutOrNull(8000L) {
+                    weatherService.getWeather(lat, lon).getOrNull()
+                }
+            }
+
+            val text = buildFullContent(weather)
+            fullContent = text
+
+            phase = 3
+            statusLine = "正在播报..."
+            speakAndWait(text)
+
+            phase = 4
+            statusLine = "播报完成"
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            statusLine = "播报失败：${e.message}"
+            phase = 4
         }
-
-        val text = buildFullContent(weather)
-        fullContent = text
-
-        phase = 3
-        statusLine = "正在播报..."
-        speakAndWait(text)
-
-        phase = 4
-        statusLine = "播报完成"
     }
 
     // ====== 权限 & 启动 ======
