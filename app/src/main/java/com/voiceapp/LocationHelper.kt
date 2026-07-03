@@ -21,7 +21,7 @@ class LocationHelper(private val context: Context) {
     private val locationManager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 
     /**
-     * 获取当前位置，超时10秒
+     * 获取当前位置
      */
     @SuppressLint("MissingPermission")
     suspend fun getCurrentLocation(): Result<Location> = suspendCancellableCoroutine { cont ->
@@ -38,7 +38,7 @@ class LocationHelper(private val context: Context) {
         val lastKnown = locationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
             ?: locationManager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
 
-        if (lastKnown != null && System.currentTimeMillis() - lastKnown.time < 5 * 60 * 1000) {
+        if (lastKnown != null && System.currentTimeMillis() - lastKnown.time < 30 * 60 * 1000) {
             cont.resume(Result.success(lastKnown))
             return@suspendCancellableCoroutine
         }
