@@ -34,17 +34,22 @@ class ApiService {
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
     private val gson = Gson()
+    private val repo = VoiceContentRepo()
     private val apiKey = "a17f2480fd1647478642cca342059778.LjWAqCmSxYFLyCIl"
 
     suspend fun generateText(prompt: String): String = withContext(Dispatchers.IO) {
+        val sysPrompt = repo.getSysPrompt()
+            .replace("{name}", repo.getNickname())
+        val temperature = repo.getTemperature()
+
         val requestBody = mapOf(
-            "model" to "glm-4-flash",
+            "model" to repo.getModelName(),
             "messages" to listOf(
-                mapOf("role" to "system", "content" to SYSTEM_PROMPT),
+                mapOf("role" to "system", "content" to sysPrompt),
                 mapOf("role" to "user", "content" to prompt)
             ),
             "max_tokens" to 300,
-            "temperature" to 0.7
+            "temperature" to temperature
         )
 
         val jsonBody = gson.toJson(requestBody)
@@ -67,9 +72,5 @@ class ApiService {
         val glmResponse = gson.fromJson(responseBody, GlmResponse::class.java)
         glmResponse.choices.firstOrNull()?.message?.content
             ?: throw Exception("GLM API 返回内容为空")
-    }
-
-    companion object {
-        private const val SYSTEM_PROMPT = "你是欣哥的车载语音助手，每次上车播报一句。称呼欣哥并带时段问候（如上午好），然后说当前温度和天气，接着给一句驾驶建议，最后祝福结束。80-120字，纯文本。词汇黑名单：严禁输出「防晒」「护肤」「补水」「帽子」「雨伞」「衣物」「中暑」「涂抹」「皮肤」。驾驶建议规则：降水或有雨→减速慢行保持车距开雾灯；温度>30°C→开空调检查胎压；大风→握紧方向盘注意横风；有雾→开雾灯低速；正常→保持车速注意前车。"
     }
 }

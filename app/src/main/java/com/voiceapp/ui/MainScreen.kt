@@ -80,31 +80,36 @@ fun MainScreen() {
 
     suspend fun buildFullContent(weather: WeatherData?): String {
         val greeting = getTimeGreeting()
-        val weatherDesc = weather?.let {
-            buildString {
-                append("${it.description}，当前${it.temperature.toInt()}°C")
-                append("，最高${it.temperatureMax.toInt()}°C，最低${it.temperatureMin.toInt()}°C")
-                if (it.precipitationProb > 50) {
-                    append("，降水概率${it.precipitationProb}%，路面湿滑小心驾驶")
-                } else if (it.precipitationProb > 0) {
-                    append("，降水概率${it.precipitationProb}%")
-                }
-                append("，湿度${it.humidity}%，风速${it.windSpeed.toInt()}km/h")
+
+        // 天气不可用 → 直接用兜底文案，跳过 prompt 构建
+        if (weather == null) {
+            return repo.getNoWeatherFallback()
+                .replace("{name}", repo.getNickname())
+                .replace("{greeting}", greeting)
+        }
+
+        val weatherDesc = buildString {
+            append("${weather.description}，当前${weather.temperature.toInt()}°C")
+            append("，最高${weather.temperatureMax.toInt()}°C，最低${weather.temperatureMin.toInt()}°C")
+            if (weather.precipitationProb > 50) {
+                append("，降水概率${weather.precipitationProb}%，路面湿滑小心驾驶")
+            } else if (weather.precipitationProb > 0) {
+                append("，降水概率${weather.precipitationProb}%")
             }
-        } ?: "天气信息暂不可用"
+            append("，湿度${weather.humidity}%，风速${weather.windSpeed.toInt()}km/h")
+        }
 
         val prompt = repo.getPromptTemplate()
             .replace("{greeting}", greeting)
             .replace("{weather}", weatherDesc)
 
-        if (weather == null) {
-            return "欣哥，${greeting}！天气信息暂不可用。请注意安全驾驶。祝您出行平安！"
-        }
-
         return try {
             apiService.generateText(prompt)
         } catch (e: Exception) {
-            "欣哥，${greeting}！今日${weatherDesc}。祝您出行平安！"
+            repo.getGlmErrorFallback()
+                .replace("{name}", repo.getNickname())
+                .replace("{greeting}", greeting)
+                .replace("{weather}", weatherDesc)
         }
     }
 
@@ -137,8 +142,9 @@ fun MainScreen() {
             phase = 2
             statusLine = "正在获取天气..."
 
-            // 定位：GPS/缓存(3s) → IP兜底(2s)
-            val loc = withTimeoutOrNull(3000L) {
+            // 定位：GPS/缓存(n秒) → IP兜底(2s)
+            val gpsTimeout = repo.getGpsTimeout() * 1000L
+            val loc = withTimeoutOrNull(gpsTimeout) {
                 locationHelper.getCurrentLocation().getOrNull()
             }
             val coords = loc?.let { it.latitude to it.longitude }
