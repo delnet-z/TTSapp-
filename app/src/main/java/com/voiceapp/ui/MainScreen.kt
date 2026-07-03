@@ -137,14 +137,12 @@ fun MainScreen() {
         phase = 2
         statusLine = "后台正在获取天气..."
 
-        val weather = withTimeoutOrNull(4000L) {
-            val loc = withTimeoutOrNull(3000L) {
-                locationHelper.getCurrentLocation().getOrNull()
-            }
-            loc?.let { l ->
-                withTimeoutOrNull(5000L) {
-                    weatherService.getWeather(l.latitude, l.longitude).getOrNull()
-                }
+        val loc = withTimeoutOrNull(3000L) {
+            locationHelper.getCurrentLocation().getOrNull()
+        }
+        val weather = loc?.let { l ->
+            withTimeoutOrNull(8000L) {
+                weatherService.getWeather(l.latitude, l.longitude).getOrNull()
             }
         }
 
