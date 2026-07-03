@@ -97,6 +97,10 @@ fun MainScreen() {
             .replace("{greeting}", greeting)
             .replace("{weather}", weatherDesc)
 
+        if (weather == null) {
+            return "欣哥，${greeting}！天气信息暂不可用。请注意安全驾驶。祝您出行平安，一路顺风！"
+        }
+
         return try {
             apiService.generateText(prompt)
         } catch (e: Exception) {
